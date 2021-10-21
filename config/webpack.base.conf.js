@@ -1,0 +1,202 @@
+const { resolve } = require('path')
+// 将css文件打包成独立的文件
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+// 打包之前删除历史文件
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+// 不需要处理的文件，可以直接复制输出目录
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+
+const commonStyleLoader = [
+  // 将js中的样式，挂载到<style>标签中
+  // "style-loader",
+  // 将css打包到单独的文件
+  // MiniCssExtractPlugin.loader,
+  {
+    loader:MiniCssExtractPlugin.loader,
+    options:{
+      publicPath:'../'
+    }
+  },
+  // 按照commonJS规范，将样式文件，输出到JS中
+  "css-loader",
+  // 通过postcss-loader给样式属性添加浏览器前缀
+  'postcss-loader'
+]
+
+module.exports = {
+  // 入口文件
+  entry:"./src/index.js",
+  // 出口配置
+  output:{
+    // 输出目录（输出目录必须是绝对路径）
+    path:resolve(__dirname,'../dist'),
+    // 输出文件名称
+    filename:'main.js'
+  },
+  module:{
+    rules:[
+      {
+        test:/\.css$/i,
+        // use中的loader的加载顺序：先下后上
+        use:commonStyleLoader
+      },
+      {
+        test:/\.less$/i,
+        // use中的loader的加载顺序：先下后上
+        use:[
+          ...commonStyleLoader,
+          // 将less转成普通的css
+          "less-loader"
+        ]
+      },
+      {
+        // 处理图片
+        test:/\.(png|gif|jpe?g)$/i,
+        // use:{
+        //   loader:'url-loader',
+        //   options:{
+        //     // 指定图片大小 小于该值 会被转成base64
+        //     limit:2 * 1024, // 2kb
+        //     // 保留名称[name]和后缀[ext]
+        //     name:'image/[name].[ext]',
+        //     // url-loader ES Modules 
+        //     // html-loader CommonJS
+        //     // 关闭url-loader默认的 改为CommonJS
+        //     esModule:false
+        //   }
+        // }
+        // 使用资源模块处理图片
+        type:'asset',
+        parser:{
+          dataUrlCondition:{
+            maxSize: 2 * 1024
+          }
+        },
+        // 生成器 按照规则生成文件
+        generator:{
+          filename:'image/[name].[hash:7][ext]'
+        }
+      },
+      {
+        test: /\.(eot|svg|ttf|woff2?)$/i,
+        // use: {
+        //   loader: 'file-loader',
+        //   options: {
+        //     limit: 10000,
+        //     name: 'fonts/[name].[hash:7].[ext]'
+        //   }
+        // }
+
+        // 使用资源模块处理字体文件
+        // asset可以在asset/resource和asset/inline之间进行选择
+        // 若文件小于8kb 使用asset/inline
+        // 若文件大于8kb 使用asset/resource
+        type:'asset',
+        parser:{
+          dataUrlCondition:{
+            maxSize: 8 * 1024
+          }
+        },
+        // 生成器 按照规则生成文件
+        generator:{
+          filename:'fonts/[name].[hash:7][ext]'
+        }
+      },
+      {
+        test: /\.m?js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: [
+              [
+                '@babel/preset-env', 
+                { 
+                  // 按需加载
+                  useBuiltIns:'usage',
+                  // 指定core-js版本
+                  corejs:3,
+                  // 允许手动指定浏览器的版本
+                  targets:{
+                    chrome:'58',
+                    ie:'9',
+                    safari:'10',
+                    edge:'17',
+                    firefox:'60'
+                  },
+                  // targets: "defaults" 
+                }
+              ]
+            ],
+          },
+          
+        }
+      },
+      // {
+      //   test:/\.(html|htm)$/i,
+      //   use:{
+      //     loader:'html-loader',
+      //     options:{
+      //       esModule:false // webpack5 中需要在设置一次
+      //     }
+      //   }
+      // }
+    ]
+  },
+  devServer: {
+    static: false,
+    // static:{
+    //   directory: resolve(__dirname, '../dist'),
+    // },
+    // 试用gzip
+    compress:true,
+    // 端口号
+    port: 8081,
+    // 热更新
+    liveReload:true,
+    // 配置代理解决跨域
+    proxy:{
+      '/api':{
+        target:"https://api.github.com",
+        pathRewrite:{
+          '^api':""
+        },
+        changeOrigin:true
+      },
+    }
+  },
+  // 配置热更的目标
+  target:"web",
+  plugins:[
+    // 将css文件打包成独立的文件
+    new MiniCssExtractPlugin({
+      // 保存原来的名字 []
+      filename:'css/[name].css'
+    }),
+    // 打包之前删除历史文件
+    new CleanWebpackPlugin(),
+    // 不需要处理的文件，可以直接复制输出目录
+    new CopyWebpackPlugin({
+      patterns:[
+        {
+          from:resolve(__dirname,'../static'),
+          to:resolve(__dirname,'../dist/static'),
+          globOptions:{
+            ignore: ['.*'],
+          }
+        }
+      ]
+    }),
+    new CopyWebpackPlugin({
+      patterns:[
+        {
+          from:resolve(__dirname,'../package.json'),
+          to:resolve(__dirname,'../dist'),
+          globOptions:{
+            ignore: ['.*'],
+          }
+        }
+      ]
+    }),
+  ]
+}

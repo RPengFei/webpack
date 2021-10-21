@@ -29,3 +29,4 @@ img.src = bg;
 console.log(img);
 document.body.append(img);
 
+console.log(API_BASE_URL);
