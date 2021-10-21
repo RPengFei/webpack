@@ -29,10 +29,3 @@ img.src = bg;
 console.log(img);
 document.body.append(img);
 
-// 以模块的形式引入图片
-import bg1 from './image/bg.png';
-let img1 = new Image()
-img1.src = bg1;
-console.log(img);
-document.body.append(img1);
-

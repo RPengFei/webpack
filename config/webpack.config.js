@@ -5,6 +5,10 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const OptimizeCssAssetsWebpackPlugin = require('optimize-css-assets-webpack-plugin')
 // Html配置
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+// 不需要处理的文件，可以直接复制输出目录
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+// 打包之前删除历史文件
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
 module.exports = {
   // 打包模式
@@ -65,28 +69,54 @@ module.exports = {
       {
         // 处理图片
         test:/\.(png|gif|jpe?g)$/i,
-        use:{
-          loader:'url-loader',
-          options:{
-            // 指定图片大小 小于该值 会被转成base64
-            limit:2 * 1024, // 2kb
-            // 保留名称[name]和后缀[ext]
-            name:'image/[name].[ext]',
-            // url-loader ES Modules 
-            // html-loader CommonJS
-            // 关闭url-loader默认的 改为CommonJS
-            esModule:false
+        // use:{
+        //   loader:'url-loader',
+        //   options:{
+        //     // 指定图片大小 小于该值 会被转成base64
+        //     limit:2 * 1024, // 2kb
+        //     // 保留名称[name]和后缀[ext]
+        //     name:'image/[name].[ext]',
+        //     // url-loader ES Modules 
+        //     // html-loader CommonJS
+        //     // 关闭url-loader默认的 改为CommonJS
+        //     esModule:false
+        //   }
+        // }
+        // 使用资源模块处理图片
+        type:'asset',
+        parser:{
+          dataUrlCondition:{
+            maxSize: 2 * 1024
           }
+        },
+        // 生成器 按照规则生成文件
+        generator:{
+          filename:'image/[name].[hash:7][ext]'
         }
       },
       {
-        test: /\.(woff2?|eot|ttf|otf)(\?.*)?$/,
-        use: {
-          loader: 'file-loader',
-          options: {
-            limit: 10000,
-            name: 'fonts/[name].[hash:7].[ext]'
+        test: /\.(eot|svg|ttf|woff2?)$/i,
+        // use: {
+        //   loader: 'file-loader',
+        //   options: {
+        //     limit: 10000,
+        //     name: 'fonts/[name].[hash:7].[ext]'
+        //   }
+        // }
+
+        // 使用资源模块处理字体文件
+        // asset可以在asset/resource和asset/inline之间进行选择
+        // 若文件小于8kb 使用asset/inline
+        // 若文件大于8kb 使用asset/resource
+        type:'asset',
+        parser:{
+          dataUrlCondition:{
+            maxSize: 8 * 1024
           }
+        },
+        // 生成器 按照规则生成文件
+        generator:{
+          filename:'fonts/[name].[hash:7][ext]'
         }
       },
       {
@@ -114,8 +144,9 @@ module.exports = {
                   // targets: "defaults" 
                 }
               ]
-            ]
-          }
+            ],
+          },
+          
         }
       },
       // {
@@ -166,6 +197,31 @@ module.exports = {
         removeStyleLinkTypeAttributes: true,
         useShortDoctype: true
       }      
-    })
+    }),
+    // 打包之前删除历史文件
+    new CleanWebpackPlugin(),
+    // 不需要处理的文件，可以直接复制输出目录
+    new CopyWebpackPlugin({
+      patterns:[
+        {
+          from:resolve(__dirname,'../static'),
+          to:resolve(__dirname,'../dist/static'),
+          globOptions:{
+            ignore: ['.*'],
+          }
+        }
+      ]
+    }),
+    new CopyWebpackPlugin({
+      patterns:[
+        {
+          from:resolve(__dirname,'../package.json'),
+          to:resolve(__dirname,'../dist'),
+          globOptions:{
+            ignore: ['.*'],
+          }
+        }
+      ]
+    }),
   ]
 }
